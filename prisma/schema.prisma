@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+enum TaskType {
+  EXAM
+  PRACTICE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  role         Role     @default(USER)
+  tasks        Task[]
+  refreshToken   String?
+  failedAttempts Int       @default(0)
+  lockoutUntil   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Task {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  isStopped   Boolean       @default(false)
+  status      TaskStatus    @default(PENDING)
+  type        TaskType      @default(PRACTICE)
+  duration    Int           @default(300) // Duration in seconds (default 5 mins)
+  startedAt   DateTime?
+  completedAt DateTime?
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  subTasks    SubTask[]
+  history     TaskHistory[]
+  deletedAt   DateTime? // For soft delete
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model SubTask {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  subSubTasks SubSubTask[]
+}
+
+model SubSubTask {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  subTaskId   String
+  subTask     SubTask  @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaskHistory {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  action    String   // e.g., "UPDATE", "SOFT_DELETE"
+  details   Json
+  createdAt DateTime @default(now())
+}
