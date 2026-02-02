@@ -5,7 +5,10 @@ import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 // Import pages lazily or stub them
+import Configuration from './pages/Configuration';
 import Dashboard from './pages/Dashboard';
+import MyTasks from './pages/MyTasks';
+import SystemControl from './pages/SystemControl';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -49,8 +52,9 @@ export default function App() {
               </ProtectedRoute>
             }>
                <Route index element={<Dashboard />} />
-               <Route path="tasks" element={<div>Tasks Page (Coming Soon)</div>} />
-               <Route path="admin" element={<div>Admin Panel (Coming Soon)</div>} />
+               <Route path="tasks" element={<MyTasks />} />
+               <Route path="admin" element={<SystemControl />} />
+               <Route path="settings" element={<Configuration />} />
             </Route>
           </Routes>
         </ErrorBoundary>

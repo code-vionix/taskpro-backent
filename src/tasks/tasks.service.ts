@@ -40,7 +40,10 @@ export class TasksService {
 
   async findAll(userId: string, role: Role) {
     if (role === Role.ADMIN) {
-      return this.prisma.task.findMany({ include: { subTasks: { include: { subSubTasks: true } } } });
+      return this.prisma.task.findMany({
+        where: { deletedAt: null },
+        include: { subTasks: { include: { subSubTasks: true } } }
+      });
     }
     return this.prisma.task.findMany({
       where: { userId, deletedAt: null },
@@ -82,16 +85,12 @@ export class TasksService {
     const task = await this.findOne(id);
     if (!task) throw new NotFoundException('Task not found');
 
-    if (role === Role.ADMIN) {
-        // Hard delete
-        return this.prisma.task.delete({ where: { id } });
-    }
-
-    if (task.userId !== userId) {
+    // Authorization: Admin can delete any, User can only delete their own
+    if (role !== Role.ADMIN && task.userId !== userId) {
         throw new ForbiddenException('Access denied');
     }
 
-    // Soft delete
+    // Soft delete logic for ALL roles (Admin & User)
     await this.prisma.taskHistory.create({
         data: {
             taskId: id,
