@@ -16,36 +16,116 @@ export class PostsService {
         content: createPostDto.content,
         imageUrl: createPostDto.imageUrl,
         userId,
+        sharedPostId: createPostDto.sharedPostId,
       },
-      include: { user: { select: { id: true, email: true, role: true } } }
+      include: { 
+          user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },
+          sharedPost: {
+              include: {
+                  user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } }
+              }
+          }
+      }
     });
+  }
+
+  async sharePost(userId: string, postId: string, content?: string) {
+      const originalPost = await this.prisma.post.findUnique({
+          where: { id: postId },
+          include: { user: true }
+      });
+      if (!originalPost) throw new NotFoundException('Post not found');
+
+      const sharedPost = await this.prisma.post.create({
+          data: {
+              content: content || '',
+              userId,
+              sharedPostId: postId
+          },
+          include: {
+              user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },
+              sharedPost: {
+                  include: {
+                      user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } }
+                  }
+              }
+          }
+      });
+
+      // Notify owner
+      if (originalPost.userId !== userId) {
+          const sharer = await this.prisma.user.findUnique({ where: { id: userId } });
+          await this.notifications.create({
+              userId: originalPost.userId,
+              type: 'SHARE',
+              message: `${sharer?.email.split('@')[0]} shared your post`,
+              data: { postId: sharedPost.id }
+          });
+      }
+
+      return sharedPost;
   }
 
   async findAll() {
     return this.prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true, coverPosition: true } },
-        _count: { select: { comments: true } },
+        user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },
+        _count: { select: { comments: true, shares: true } },
         reactions: true,
+        sharedPost: {
+            include: {
+                user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } }
+            }
+        },
         comments: {
            include: { 
-               user: { select: { id: true, email: true } },
-               replies: { include: { user: { select: { id: true, email: true } } } }
+               user: { select: { id: true, email: true, avatarUrl: true } },
            },
            orderBy: { createdAt: 'asc' },
-           where: { parentId: null } // Only top-level comments initially
         }
       },
     });
+  }
+
+  async findByUser(userId: string) {
+      return this.prisma.post.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          include: {
+              user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },
+              _count: { select: { comments: true, shares: true } },
+              reactions: true,
+              sharedPost: {
+                  include: {
+                      user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } }
+                  }
+              },
+              comments: {
+                  include: { 
+                      user: { select: { id: true, email: true, avatarUrl: true } },
+                  },
+                  orderBy: { createdAt: 'asc' },
+              }
+          },
+      });
   }
 
   async findOne(id: string) {
     const post = await this.prisma.post.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, email: true } },
-        comments: { include: { user: { select: { id: true, email: true } } } },
+        user: { select: { id: true, email: true, avatarUrl: true, avatarPosition: true } },
+        sharedPost: {
+            include: {
+                user: { select: { id: true, email: true, avatarUrl: true, avatarPosition: true } }
+            }
+        },
+        comments: { 
+            include: { 
+                user: { select: { id: true, email: true, avatarUrl: true } } 
+            } 
+        },
         reactions: true
       }
     });

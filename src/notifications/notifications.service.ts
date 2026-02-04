@@ -12,7 +12,7 @@ export class NotificationsService {
 
   async create(data: {
     userId: string;
-    type: 'MESSAGE' | 'COMMENT' | 'REACTION' | 'TASK_ASSIGNED';
+    type: 'MESSAGE' | 'COMMENT' | 'REACTION' | 'TASK_ASSIGNED' | 'SHARE';
     message: string;
     data?: any;
   }) {

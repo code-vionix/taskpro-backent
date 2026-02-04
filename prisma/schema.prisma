@@ -115,6 +115,9 @@ model Post {
   user      User     @relation(fields: [userId], references: [id])
   comments  Comment[]
   reactions Reaction[]
+  sharedPostId String?
+  sharedPost   Post?    @relation("PostShares", fields: [sharedPostId], references: [id])
+  shares       Post[]   @relation("PostShares")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

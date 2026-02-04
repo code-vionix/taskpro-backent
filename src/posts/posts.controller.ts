@@ -28,6 +28,16 @@ export class PostsController {
     return this.postsService.findAll();
   }
 
+  @Get('user/:userId')
+  findByUser(@Param('userId') userId: string) {
+      return this.postsService.findByUser(userId);
+  }
+
+  @Post(':id/share')
+  share(@Request() req, @Param('id') id: string, @Body('content') content?: string) {
+      return this.postsService.sharePost(req.user.userId, id, content);
+  }
+
   @Post(':id/react')
   react(@Request() req, @Param('id') id: string, @Body('type') type: ReactionType) {
       return this.postsService.addReaction(req.user.userId, id, type);
