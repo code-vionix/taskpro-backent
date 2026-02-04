@@ -66,8 +66,10 @@ export class PostsService {
       return sharedPost;
   }
 
-  async findAll() {
+  async findAll(skip: number = 0, take: number = 10) {
     return this.prisma.post.findMany({
+      skip,
+      take,
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },
@@ -88,9 +90,11 @@ export class PostsService {
     });
   }
 
-  async findByUser(userId: string) {
+  async findByUser(userId: string, skip: number = 0, take: number = 10) {
       return this.prisma.post.findMany({
           where: { userId },
+          skip,
+          take,
           orderBy: { createdAt: 'desc' },
           include: {
               user: { select: { id: true, email: true, role: true, avatarUrl: true, avatarPosition: true } },

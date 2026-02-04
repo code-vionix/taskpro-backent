@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ReactionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,13 +24,17 @@ export class PostsController {
   }
 
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  findAll(@Query('page') page: string = '1', @Query('limit') limit: string = '10') {
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    return this.postsService.findAll(skip, take);
   }
 
   @Get('user/:userId')
-  findByUser(@Param('userId') userId: string) {
-      return this.postsService.findByUser(userId);
+  findByUser(@Param('userId') userId: string, @Query('page') page: string = '1', @Query('limit') limit: string = '10') {
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const take = parseInt(limit);
+      return this.postsService.findByUser(userId, skip, take);
   }
 
   @Post(':id/share')

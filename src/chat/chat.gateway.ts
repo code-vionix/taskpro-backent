@@ -72,7 +72,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         receiverId,
       },
       include: {
-        sender: { select: { email: true, avatarUrl: true } },
+        sender: { select: { email: true, avatarUrl: true, avatarPosition: true } },
       },
     });
 
