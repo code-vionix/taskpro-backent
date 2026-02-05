@@ -27,9 +27,9 @@ export class AuthController {
   }
 
   @Post('request-magic-link')
-  async requestMagicLink(@Body('email') email: string) {
-    if (!email) throw new BadRequestException('Email is required');
-    return this.authService.requestMagicLink(email);
+  async requestMagicLink(@Body() body: { email: string; forgotPassword?: boolean }) {
+    if (!body.email) throw new BadRequestException('Email is required');
+    return this.authService.requestMagicLink(body.email, body.forgotPassword || false);
   }
 
   @Post('verify-magic-link')

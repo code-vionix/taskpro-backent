@@ -77,11 +77,18 @@ export class AuthService {
     });
   }
 
-  async requestMagicLink(email: string) {
+  async requestMagicLink(email: string, forgotPassword: boolean = false) {
     let user = await this.usersService.findOne(email.toLowerCase().trim());
+    
     if (!user) {
-        // Auto-register user if they don't exist
+        // Auto-register user if they don't exist (only for first-time magic link)
+        if (forgotPassword) {
+            throw new UnauthorizedException('No account found with this email');
+        }
         user = await this.usersService.create({ email: email.toLowerCase().trim() });
+    } else if (user.password && !forgotPassword) {
+        // User already has password set, should use password login
+        throw new UnauthorizedException('You have already set a password. Please use password login or click "Forgot Password" to reset it.');
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -95,8 +102,8 @@ export class AuthService {
         otpExpires: expires,
     });
 
-    await this.emailService.sendMagicLink(email, token);
-    return { message: 'Magic link sent' };
+    await this.emailService.sendMagicLink(email, token, forgotPassword);
+    return { message: forgotPassword ? 'Password reset link sent to your email' : 'Magic link sent' };
   }
 
   async verifyMagicLink(email: string, token: string) {
