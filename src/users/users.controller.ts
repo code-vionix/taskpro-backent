@@ -1,5 +1,5 @@
 
-import { Body, Controller, Get, Param, Patch, Post, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as bcrypt from 'bcrypt';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,7 +15,7 @@ export class UsersController {
   ) {}
 
   @Get()
-  findAll() {
+  findAll(@Request() req) {
     return this.usersService.findAll();
   }
 
@@ -40,6 +40,11 @@ export class UsersController {
     coverPosition?: any; 
     avatarPosition?: any;
     password?: string;
+    // Permissions (Admin only)
+    canPost?: boolean;
+    canMessage?: boolean;
+    canUseCommunity?: boolean;
+    canCreateTask?: boolean;
   }) {
     const data: any = { ...updateDto };
     
@@ -51,6 +56,28 @@ export class UsersController {
     }
 
     return this.usersService.update(req.user.userId, data);
+  }
+
+  @Patch(':id/permissions')
+  async updatePermissions(@Request() req, @Param('id') id: string, @Body() permissions: {
+      canPost?: boolean;
+      canMessage?: boolean;
+      canUseCommunity?: boolean;
+      canCreateTask?: boolean;
+      role?: any;
+  }) {
+      if (req.user.role !== 'ADMIN') {
+          throw new Error('Unauthorized: Only admins can manage permissions');
+      }
+      return this.usersService.update(id, permissions);
+  }
+
+  @Delete(':id')
+  async remove(@Request() req, @Param('id') id: string) {
+      if (req.user.role !== 'ADMIN') {
+          throw new Error('Unauthorized: Only admins can delete users');
+      }
+      return this.usersService.remove(id);
   }
 
   @Patch('profile/update')

@@ -64,6 +64,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { receiverId, content, senderId } = data;
 
+    // Check permissions
+    const sender = await this.prisma.user.findUnique({ where: { id: senderId } });
+    if (sender && !sender.canMessage && sender.role !== 'ADMIN') {
+        client.emit('error', { message: 'You are restricted from sending messages' });
+        return;
+    }
+    if (sender && !sender.canUseCommunity && sender.role !== 'ADMIN') {
+        client.emit('error', { message: 'Community access restricted' });
+        return;
+    }
+
     // Save message to DB
     const message = await this.prisma.message.create({
       data: {
@@ -137,14 +148,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { messageId, userId, receiverId } = data;
 
-    // Check ownership and delete
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
-    if (message && message.senderId === userId) {
+    // Check ownership or admin and delete
+    const message = await this.prisma.message.findUnique({ 
+        where: { id: messageId },
+        include: { sender: true }
+    });
+    
+    // Get user role for deletion
+    const requestor = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isAdmin = requestor?.role === 'ADMIN';
+
+    if (message && (message.senderId === userId || isAdmin)) {
       await this.prisma.message.delete({ where: { id: messageId } });
       
       // Notify both sender and receiver
-      this.server.to(`user_${userId}`).emit('messageDeleted', { messageId });
-      this.server.to(`user_${receiverId}`).emit('messageDeleted', { messageId });
+      this.server.to(`user_${message.senderId}`).emit('messageDeleted', { messageId });
+      this.server.to(`user_${message.receiverId}`).emit('messageDeleted', { messageId });
     }
   }
 }

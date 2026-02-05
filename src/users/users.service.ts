@@ -42,6 +42,10 @@ export class UsersService {
         isOnline: true,
         lastSeen: true,
         createdAt: true,
+        canPost: true,
+        canMessage: true,
+        canUseCommunity: true,
+        canCreateTask: true,
         _count: {
           select: {
             posts: true,
@@ -68,15 +72,27 @@ export class UsersService {
     });
   }
 
-  async findAll() {
+   async findAll() {
     return this.prisma.user.findMany({
       select: {
         id: true,
         email: true,
         name: true,
+        role: true,
         avatarUrl: true,
         isOnline: true,
+        canPost: true,
+        canMessage: true,
+        canUseCommunity: true,
+        canCreateTask: true,
       },
+      orderBy: { createdAt: 'desc' }
     });
+  }
+
+  async remove(id: string) {
+      return this.prisma.user.delete({
+          where: { id }
+      });
   }
 }

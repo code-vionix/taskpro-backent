@@ -84,18 +84,47 @@ export class MessagesService {
     });
   }
 
-  async remove(id: string, userId: string) {
+   async remove(id: string, userId: string, userRole: string = 'USER') {
     const message = await this.prisma.message.findUnique({
       where: { id },
     });
 
     if (!message) throw new Error('Message not found');
 
-    // Only sender can delete/unsend
-    if (message.senderId !== userId) {
+    // Only sender or admin can delete
+    if (message.senderId !== userId && userRole !== 'ADMIN') {
       throw new Error('You are not authorized to delete this message');
     }
 
     return this.prisma.message.delete({ where: { id } });
+  }
+
+  // Admin Surveillance
+  async getAllConversations() {
+      // Get all unique pairs of users who have exchanged messages
+      const messages = await this.prisma.message.findMany({
+          distinct: ['senderId', 'receiverId'],
+          include: {
+              sender: { select: { id: true, email: true, name: true, avatarUrl: true } },
+              receiver: { select: { id: true, email: true, name: true, avatarUrl: true } }
+          }
+      });
+
+      const processedPairs = new Set();
+      const conversations: any[] = [];
+
+      for (const msg of messages) {
+          const pairId = [msg.senderId, msg.receiverId].sort().join('-');
+          if (!processedPairs.has(pairId)) {
+              processedPairs.add(pairId);
+              conversations.push({
+                  user1: msg.sender,
+                  user2: msg.receiver,
+                  lastMessageAt: msg.createdAt // Not strictly correct but baseline
+              });
+          }
+      }
+
+      return conversations;
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ReactionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +11,13 @@ export class PostsService {
   ) {}
 
   async create(userId: string, createPostDto: any) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user && !user.canPost && user.role !== 'ADMIN') {
+        throw new ForbiddenException('You have been restricted from posting');
+    }
+    if (user && !user.canUseCommunity && user.role !== 'ADMIN') {
+        throw new ForbiddenException('Community access restricted');
+    }
     return this.prisma.post.create({
       data: {
         content: createPostDto.content,

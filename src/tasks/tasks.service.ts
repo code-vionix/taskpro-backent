@@ -12,8 +12,11 @@ export class TasksService {
   ) {}
 
   async create(userId: string, createTaskDto: any, role: Role) {
-    if (role !== Role.ADMIN) {
-      throw new ForbiddenException('Only admins can create tasks');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isAdmin = role === Role.ADMIN;
+    
+    if (!isAdmin && (!user || !user.canCreateTask)) {
+      throw new ForbiddenException('You are not authorized to create tasks');
     }
 
     let targetUserId: string | null = null;

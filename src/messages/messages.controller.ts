@@ -31,6 +31,19 @@ export class MessagesController {
 
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
-    return this.messagesService.remove(id, req.user.userId);
+    return this.messagesService.remove(id, req.user.userId, req.user.role);
+  }
+
+  // Admin Surveillance
+  @Get('admin/conversations')
+  async getAllConversations(@Request() req) {
+      if (req.user.role !== 'ADMIN') throw new Error('Unauthorized');
+      return this.messagesService.getAllConversations();
+  }
+
+  @Get('admin/conversation/:u1/:u2')
+  async getConversationAdmin(@Request() req, @Param('u1') u1: string, @Param('u2') u2: string) {
+      if (req.user.role !== 'ADMIN') throw new Error('Unauthorized');
+      return this.messagesService.getConversation(u1, u2);
   }
 }

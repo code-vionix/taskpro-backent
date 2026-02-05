@@ -13,6 +13,7 @@ datasource db {
 
 enum Role {
   ADMIN
+  ASSISTANT_ADMIN
   USER
   GUEST
 }
@@ -50,6 +51,13 @@ model User {
   avatarPosition   Json?
   isOnline         Boolean   @default(false)
   lastSeen         DateTime? @default(now())
+  
+  // Permissions managed by ADMIN
+  canPost          Boolean   @default(true)
+  canMessage       Boolean   @default(true)
+  canUseCommunity  Boolean   @default(true)
+  canCreateTask    Boolean   @default(true)
+
   posts            Post[]
   comments         Comment[]
   reactions        Reaction[]
