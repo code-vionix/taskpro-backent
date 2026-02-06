@@ -109,4 +109,9 @@ export class TasksController {
   toggleSubSubTask(@Request() req, @Param('id') id: string) {
     return this.tasksService.toggleSubSubTask(id, req.user.userId, req.user.role);
   }
+
+  @Patch(':id/activity')
+  logActivity(@Request() req, @Param('id') id: string, @Body() body: { type: string; url?: string; duration?: number }) {
+    return this.tasksService.logActivity(id, req.user.userId, body.type, body.url, body.duration);
+  }
 }

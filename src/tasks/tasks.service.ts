@@ -414,4 +414,29 @@ export class TasksService {
         data: { isCompleted: !subSubTask.isCompleted }
     });
   }
+
+  async logActivity(taskId: string, userId: string, type: string, url?: string, duration?: number) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task || task.userId !== userId) throw new ForbiddenException('Access denied');
+    
+    // Only log if task is in progress
+    if (task.status !== 'IN_PROGRESS') return task;
+
+    const currentLogs = Array.isArray(task.activityLogs) ? task.activityLogs : [];
+    const newLog: any = { 
+      type, 
+      timestamp: new Date().toISOString()
+    };
+    
+    if (url) newLog.url = url;
+    if (duration) newLog.duration = duration;
+    
+    return this.prisma.task.update({
+        where: { id: taskId },
+        data: {
+            focusLosses: type.includes('BLUR') || type.includes('SWITCH') ? { increment: 1 } : undefined,
+            activityLogs: [...currentLogs, newLog]
+        }
+    });
+  }
 }

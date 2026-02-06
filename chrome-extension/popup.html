@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+    }
+    h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .status {
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .status.active {
+      background: rgba(16, 185, 129, 0.3);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+    }
+    .status.inactive {
+      background: rgba(239, 68, 68, 0.3);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .start-btn {
+      background: #10b981;
+      color: white;
+      margin-bottom: 8px;
+    }
+    .stop-btn {
+      background: #ef4444;
+      color: white;
+    }
+    .info {
+      font-size: 11px;
+      margin-top: 12px;
+      opacity: 0.8;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔍 Task Monitor</h2>
+    <div id="status" class="status inactive">Monitoring: OFF</div>
+    <button id="startBtn" class="start-btn">Start Monitoring</button>
+    <button id="stopBtn" class="stop-btn" style="display:none;">Stop Monitoring</button>
+    <div class="info">
+      This extension tracks your browsing activity during active tasks. Make sure you're logged in to the task platform.
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
