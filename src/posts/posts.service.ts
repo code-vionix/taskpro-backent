@@ -73,8 +73,20 @@ export class PostsService {
       return sharedPost;
   }
 
-  async findAll(skip: number = 0, take: number = 10) {
+  async findAll(skip: number = 0, take: number = 10, userId?: string, onlyFollowing: boolean = false) {
+    let where = {};
+    
+    if (onlyFollowing && userId) {
+        const following = await this.prisma.follow.findMany({
+            where: { followerId: userId },
+            select: { followingId: true }
+        });
+        const followingIds = following.map(f => f.followingId);
+        where = { userId: { in: followingIds } };
+    }
+
     return this.prisma.post.findMany({
+      where,
       skip,
       take,
       orderBy: { createdAt: 'desc' },

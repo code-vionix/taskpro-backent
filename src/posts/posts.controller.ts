@@ -24,10 +24,16 @@ export class PostsController {
   }
 
   @Get()
-  findAll(@Query('page') page: string = '1', @Query('limit') limit: string = '10') {
+  findAll(
+    @Request() req,
+    @Query('page') page: string = '1', 
+    @Query('limit') limit: string = '10',
+    @Query('following') following?: string
+  ) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
-    return this.postsService.findAll(skip, take);
+    const onlyFollowing = following === 'true';
+    return this.postsService.findAll(skip, take, req.user.userId, onlyFollowing);
   }
 
   @Get('user/:userId')

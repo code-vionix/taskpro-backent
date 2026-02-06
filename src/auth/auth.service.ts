@@ -65,7 +65,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload, { expiresIn: (process.env.JWT_EXPIRE || '15m') as any }),
       refresh_token: refreshToken,
-      user: { id: user.id, email: user.email, role: user.role, name: user.name }
+      user: { id: user.id, email: user.email, role: user.role, name: user.name, category: user.category }
     };
   }
 

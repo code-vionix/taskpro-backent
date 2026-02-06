@@ -10,4 +10,5 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`\x1b[32m Application is running on: http://localhost:${port}\x1b[0m`);
 }
+// Reload triggered: 2026-02-06T10:55:00
 bootstrap();

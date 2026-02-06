@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -21,7 +22,9 @@ enum Role {
 enum TaskStatus {
   PENDING
   IN_PROGRESS
+  UNDER_REVIEW
   COMPLETED
+  REJECTED
   EXPIRED
 }
 
@@ -65,8 +68,35 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   notifications    Notification[]
   messageReactions MessageReaction[]
+  taskComments     TaskComment[]
   otp              String?
   otpExpires        DateTime?
+
+  // Follow System
+  followers        Follow[]  @relation("UserFollowers")
+  following        Follow[]  @relation("UserFollowing")
+
+  // Category System
+  category           String?   // WEB_DEV, SOCIAL_MEDIA, etc.
+  lastCategoryUpdate DateTime? // Monthly change limit
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id])
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 model Task {
@@ -78,23 +108,46 @@ model Task {
   isStopped     Boolean       @default(false)
   status        TaskStatus    @default(PENDING)
   type          TaskType      @default(PRACTICE)
+  priority      TaskPriority  @default(MEDIUM)
+  category      String        @default("GENERAL")
+  tags          String[]      @default([])
+  attachments   Json?         // Array of { name: string, url: string }
   duration      Int           @default(300) // Duration in seconds (default 5 mins)
   startedAt     DateTime?
   completedAt   DateTime?
+  score         Int           @default(0)
+  submissionNotes String?     // Summary of work done
+  
+  // Recurrence
+  isRecurring   Boolean       @default(false)
+  recurrence    String?       // DAILY, WEEKLY, MONTHLY
+  
   userId        String?
   user          User?          @relation(fields: [userId], references: [id])
   subTasks      SubTask[]
   history       TaskHistory[]
+  comments      TaskComment[]
   deletedAt     DateTime? // For soft delete
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   lastStoppedAt DateTime?
 }
 
+model TaskComment {
+  id        String   @id @default(uuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
 model SubTask {
   id          String   @id @default(uuid())
   title       String
   description String?
+  isCompleted Boolean  @default(false)
   taskId      String
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -106,6 +159,7 @@ model SubSubTask {
   id          String   @id @default(uuid())
   title       String
   description String?
+  isCompleted Boolean  @default(false)
   subTaskId   String
   subTask     SubTask  @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -194,7 +248,7 @@ model MessageReaction {
 
 model Notification {
   id        String   @id @default(uuid())
-  type      String   // MESSAGE, COMMENT, REACTION, TASK_ASSIGNED
+  type      String   // MESSAGE, COMMENT, REACTION, TASK_ASSIGNED, FOLLOW
   message   String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

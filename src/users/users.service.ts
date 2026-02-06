@@ -1,5 +1,5 @@
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -46,10 +46,14 @@ export class UsersService {
         canMessage: true,
         canUseCommunity: true,
         canCreateTask: true,
+        category: true,
+        lastCategoryUpdate: true,
         _count: {
           select: {
             posts: true,
             tasks: true,
+            followers: true,
+            following: true,
           },
         },
       },
@@ -65,6 +69,32 @@ export class UsersService {
     });
   }
 
+  async updateCategory(userId: string, category: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { lastCategoryUpdate: true }
+    });
+
+    if (user?.lastCategoryUpdate) {
+      const lastUpdate = new Date(user.lastCategoryUpdate);
+      const now = new Date();
+      const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+      
+      if (now.getTime() - lastUpdate.getTime() < thirtyDaysInMs) {
+        const daysRemaining = Math.ceil((thirtyDaysInMs - (now.getTime() - lastUpdate.getTime())) / (1000 * 60 * 60 * 24));
+        throw new BadRequestException(`Category change restricted. ${daysRemaining} days remaining in cooldown.`);
+      }
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        category,
+        lastCategoryUpdate: new Date()
+      }
+    });
+  }
+
   async updateRefreshToken(id: string, refreshToken: string | null) {
     return this.prisma.user.update({
       where: { id },
@@ -72,7 +102,7 @@ export class UsersService {
     });
   }
 
-   async findAll() {
+  async findAll() {
     return this.prisma.user.findMany({
       select: {
         id: true,
@@ -85,6 +115,7 @@ export class UsersService {
         canMessage: true,
         canUseCommunity: true,
         canCreateTask: true,
+        category: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -94,5 +125,39 @@ export class UsersService {
       return this.prisma.user.delete({
           where: { id }
       });
+  }
+
+  async follow(followerId: string, followingId: string) {
+    if (followerId === followingId) throw new BadRequestException('Cannot follow yourself');
+    
+    const exists = await this.prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId, followingId } }
+    });
+    
+    if (exists) return exists;
+
+    return this.prisma.follow.create({
+      data: { followerId, followingId }
+    });
+  }
+
+  async unfollow(followerId: string, followingId: string) {
+    return this.prisma.follow.delete({
+      where: { followerId_followingId: { followerId, followingId } }
+    });
+  }
+
+  async getFollowers(userId: string) {
+    return this.prisma.follow.findMany({
+      where: { followingId: userId },
+      include: { follower: { select: { id: true, name: true, email: true, avatarUrl: true } } }
+    });
+  }
+
+  async getFollowing(userId: string) {
+    return this.prisma.follow.findMany({
+      where: { followerId: userId },
+      include: { following: { select: { id: true, name: true, email: true, avatarUrl: true } } }
+    });
   }
 }
