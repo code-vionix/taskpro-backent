@@ -249,10 +249,11 @@ export class RemoteControlGateway
   @SubscribeMessage('screen:frame')
   async handleScreenFrame(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { sessionId: string; frame: string },
+    @MessageBody() data: { sessionId: string; frame: string; type?: string },
   ) {
     this.server.to(`session:${data.sessionId}`).emit('screen:frame', {
       frame: data.frame,
+      type: data.type, // Forward the type (camera or screen)
     });
   }
 }
