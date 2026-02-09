@@ -39,6 +39,7 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: any,
   ) {
+    console.log('Received device:register request:', data);
     try {
       const device = await this.remoteControlService.registerDevice(
         data.userId,

@@ -10,6 +10,7 @@ import { MessagesModule } from './messages/messages.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PostsModule } from './posts/posts.module';
 import { RemoteControlModule } from './remote-control/remote-control.module';
+import { StoriesModule } from './stories/stories.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     TasksModule,
     PostsModule,
+    StoriesModule,
     MessagesModule,
     ChatModule,
     NotificationsModule,

@@ -82,6 +82,7 @@ model User {
 
   // Remote Control
   registeredDevices  RegisteredDevice[]
+  stories            Story[]
 }
 
 model Follow {
@@ -211,6 +212,15 @@ model Comment {
   updatedAt DateTime @updatedAt
 }
 
+model Story {
+  id        String   @id @default(uuid())
+  imageUrl  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
 enum ReactionType {
   LIKE
   DISLIKE
@@ -315,6 +325,11 @@ enum CommandType {
   SEND_SMS
   MAKE_CALL
   OPEN_APP
+  GET_STATS
+  GET_FILES
+  CAMERA_CAPTURE
+  AUDIO_RECORD
+  VIBRATE
   CUSTOM
 }
 

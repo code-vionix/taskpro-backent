@@ -18,7 +18,7 @@ export class RemoteControlController {
   // Get user's registered devices
   @Get('devices')
   async getDevices(@Request() req) {
-    return this.remoteControlService.getUserDevices(req.user.id);
+    return this.remoteControlService.getUserDevices(req.user.userId);
   }
 
   // Get specific device
