@@ -181,6 +181,7 @@ export class RemoteControlGateway
     if (command) {
         this.server.to(`session:${command.sessionId}`).emit('command:completed', {
             commandId: data.commandId,
+            type: command.type,
             status: data.status,
             result: data.result,
             error: data.error,
