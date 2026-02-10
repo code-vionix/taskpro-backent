@@ -14,20 +14,33 @@ export class CloudinaryService {
   }
 
   async uploadImage(file: Express.Multer.File): Promise<string> {
+    if (!file || !file.buffer) {
+      throw new Error('Invalid file: No file buffer provided');
+    }
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'community_posts' },
         (error, result) => {
-          if (error) return reject(error);
-          if (!result) return reject(new Error('Upload failed'));
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            return reject(new Error(`Cloudinary upload failed: ${error.message}`));
+          }
+          if (!result) {
+            return reject(new Error('Upload failed: No result returned from Cloudinary'));
+          }
           resolve(result.secure_url);
         },
       );
 
-      const stream = new Readable();
-      stream.push(file.buffer);
-      stream.push(null);
-      stream.pipe(uploadStream);
+      try {
+        const stream = new Readable();
+        stream.push(file.buffer);
+        stream.push(null);
+        stream.pipe(uploadStream);
+      } catch (error) {
+        reject(new Error(`Stream error: ${error.message}`));
+      }
     });
   }
 }

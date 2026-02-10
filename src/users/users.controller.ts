@@ -110,17 +110,35 @@ export class UsersController {
   @Post('upload-avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
-    const url = await this.cloudinaryService.uploadImage(file);
-    await this.usersService.update(req.user.userId, { avatarUrl: url });
-    return { url };
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      const url = await this.cloudinaryService.uploadImage(file);
+      await this.usersService.update(req.user.userId, { avatarUrl: url });
+      return { url };
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      throw new BadRequestException('Failed to upload avatar: ' + error.message);
+    }
   }
 
   @Post('upload-cover')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCover(@Request() req, @UploadedFile() file: Express.Multer.File) {
-    const url = await this.cloudinaryService.uploadImage(file);
-    await this.usersService.update(req.user.userId, { coverImageUrl: url });
-    return { url };
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      const url = await this.cloudinaryService.uploadImage(file);
+      await this.usersService.update(req.user.userId, { coverImageUrl: url });
+      return { url };
+    } catch (error) {
+      console.error('Cover upload error:', error);
+      throw new BadRequestException('Failed to upload cover image: ' + error.message);
+    }
   }
 
   @Post(':id/follow')
