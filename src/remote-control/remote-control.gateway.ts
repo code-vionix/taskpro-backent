@@ -202,18 +202,15 @@ export class RemoteControlGateway
     return { success: true };
   }
 
-  // WebRTC signaling for screen sharing
+  // WebRTC signaling relay
   @SubscribeMessage('webrtc:offer')
   async handleWebRTCOffer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { sessionId: string; offer: any },
+    @MessageBody() data: { sessionId: string; [key: string]: any },
   ) {
     const session = await this.remoteControlService.getSession(data.sessionId);
     if (session) {
-        this.server.to(`device:${session.deviceId}`).emit('webrtc:offer', {
-            sessionId: data.sessionId,
-            offer: data.offer,
-        });
+        this.server.to(`device:${session.deviceId}`).emit('webrtc:offer', data);
     }
     return { success: true };
   }
@@ -221,37 +218,27 @@ export class RemoteControlGateway
   @SubscribeMessage('webrtc:answer')
   async handleWebRTCAnswer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { sessionId: string; answer: any },
+    @MessageBody() data: { sessionId: string; [key: string]: any },
   ) {
-    this.server.to(`session:${data.sessionId}`).emit('webrtc:answer', {
-      answer: data.answer,
-    });
+    this.server.to(`session:${data.sessionId}`).emit('webrtc:answer', data);
     return { success: true };
   }
 
   @SubscribeMessage('webrtc:ice-candidate')
   async handleICECandidate(
     @ConnectedSocket() client: Socket,
-    @MessageBody()
-    data: {
-      sessionId: string;
-      candidate: any;
-      target: 'web' | 'device';
-    },
+    @MessageBody() data: { sessionId: string; target?: string; [key: string]: any },
   ) {
-    if (data.target === 'device') {
-      const session = await this.remoteControlService.getSession(
-        data.sessionId,
-      );
+    // If target is 'web', route to the session room
+    if (data.target === 'web') {
+      this.server.to(`session:${data.sessionId}`).emit('webrtc:ice-candidate', data);
+    } 
+    // If target is 'device' or not specified (default from web client), route to device
+    else {
+      const session = await this.remoteControlService.getSession(data.sessionId);
       if (session) {
-        this.server.to(`device:${session.deviceId}`).emit('webrtc:ice-candidate', {
-            candidate: data.candidate,
-        });
+        this.server.to(`device:${session.deviceId}`).emit('webrtc:ice-candidate', data);
       }
-    } else {
-      this.server.to(`session:${data.sessionId}`).emit('webrtc:ice-candidate', {
-        candidate: data.candidate,
-      });
     }
     return { success: true };
   }
