@@ -206,11 +206,15 @@ export class RemoteControlGateway
   @SubscribeMessage('webrtc:offer')
   async handleWebRTCOffer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { sessionId: string; [key: string]: any },
+    @MessageBody() data: any,
   ) {
+    console.log('[WebRTC] Received offer from web:', JSON.stringify(data));
     const session = await this.remoteControlService.getSession(data.sessionId);
     if (session) {
+        console.log('[WebRTC] Forwarding offer to device:', session.deviceId);
         this.server.to(`device:${session.deviceId}`).emit('webrtc:offer', data);
+    } else {
+        console.error('[WebRTC] Session not found for offer:', data.sessionId);
     }
     return { success: true };
   }
@@ -227,8 +231,10 @@ export class RemoteControlGateway
   @SubscribeMessage('webrtc:ice-candidate')
   async handleICECandidate(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { sessionId: string; target?: string; [key: string]: any },
+    @MessageBody() data: any,
   ) {
+    console.log('[WebRTC] Received ICE candidate:', JSON.stringify(data));
+    
     // If target is 'web', route to the session room
     if (data.target === 'web') {
       this.server.to(`session:${data.sessionId}`).emit('webrtc:ice-candidate', data);
@@ -237,7 +243,10 @@ export class RemoteControlGateway
     else {
       const session = await this.remoteControlService.getSession(data.sessionId);
       if (session) {
+        console.log('[WebRTC] Forwarding ICE to device:', session.deviceId);
         this.server.to(`device:${session.deviceId}`).emit('webrtc:ice-candidate', data);
+      } else {
+        console.error('[WebRTC] Session not found for ICE:', data.sessionId);
       }
     }
     return { success: true };
