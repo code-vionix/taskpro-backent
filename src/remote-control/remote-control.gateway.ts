@@ -136,18 +136,32 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string; accepted: boolean },
   ) {
-    const session = await this.remoteControlService.updateSessionStatus(
-      data.sessionId,
-      data.accepted,
-    );
+    try {
+      const session = await this.remoteControlService.getSession(data.sessionId);
+      if (!session) return { success: false, error: 'Session not found' };
 
-    // Notify web client
-    this.server.to(`session:${data.sessionId}`).emit('session:status', {
-      accepted: data.accepted,
-      session,
-    });
+      // Verify ownership: mobile device must be owned by the user in the session
+      const device = await this.remoteControlService.getDevice(session.deviceId);
+      if (device?.userId !== client['userId']) {
+        console.error('[Session] Unauthorized response by user:', client['userId']);
+        return { success: false, error: 'Unauthorized' };
+      }
 
-    return { success: true };
+      await this.remoteControlService.updateSessionStatus(
+        data.sessionId,
+        data.accepted,
+      );
+
+      // Notify web client
+      this.server.to(`session:${data.sessionId}`).emit('session:status', {
+        accepted: data.accepted,
+        session,
+      });
+
+      return { success: true };
+    } catch (error) {
+       return { success: false, error: error.message };
+    }
   }
 
   // Web client sends command to device
@@ -222,27 +236,37 @@ export class RemoteControlGateway
     }
     
     try {
+        const command = await this.remoteControlService.getCommand(data.commandId);
+        if (!command) throw new Error('Command not found');
+
+        const session = await this.remoteControlService.getSession(command.sessionId);
+        if (!session) throw new Error('Session not found');
+
+        // Check ownership: device sending the result must be owned by the authenticated user
+        const device = await this.remoteControlService.getDevice(session.deviceId);
+        if (device?.userId !== client['userId']) {
+           console.error('[Command] Unauthorized result by user:', client['userId']);
+           return { success: false, error: 'Unauthorized' };
+        }
+
         await this.remoteControlService.updateCommandStatus(
           data.commandId,
           data.status,
           data.result,
           data.error,
         );
-    } catch (err) {
-        console.error(`Backend failed to update status for ${data.commandId}:`, err);
-        return { success: false, error: err.message };
-    }
 
-    // Notify web client
-    const command = await this.remoteControlService.getCommand(data.commandId);
-    if (command) {
+        // Notify web client
         this.server.to(`session:${command.sessionId}`).emit('command:completed', {
             ...data,
             type: command.type,
         });
-    }
 
-    return { success: true };
+        return { success: true };
+    } catch (err) {
+        console.error(`Backend failed to process result for ${data.commandId}:`, err);
+        return { success: false, error: err.message };
+    }
   }
 
   // WebRTC signaling relay
@@ -275,7 +299,16 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string; [key: string]: any },
   ) {
-    this.server.to(`session:${data.sessionId}`).emit('webrtc:answer', data);
+    const session = await this.remoteControlService.getSession(data.sessionId);
+    if (session) {
+        // Verify ownership
+        const device = await this.remoteControlService.getDevice(session.deviceId);
+        if (device?.userId !== client['userId']) {
+            console.error('[WebRTC] Unauthorized answer by user:', client['userId']);
+            return { success: false, error: 'Unauthorized' };
+        }
+        this.server.to(`session:${data.sessionId}`).emit('webrtc:answer', data);
+    }
     return { success: true };
   }
 
@@ -284,6 +317,16 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: any,
   ) {
+    const session = await this.remoteControlService.getSession(data.sessionId);
+    if (!session) return { success: false, error: 'Session not found' };
+
+    // Verify ownership
+    const device = await this.remoteControlService.getDevice(session.deviceId);
+    if (device?.userId !== client['userId']) {
+        console.error('[WebRTC] Unauthorized ICE candidate by user:', client['userId']);
+        return { success: false, error: 'Unauthorized' };
+    }
+
     console.log('[WebRTC] Received ICE candidate:', JSON.stringify(data));
     
     // If target is 'web', route to the session room
@@ -292,13 +335,8 @@ export class RemoteControlGateway
     } 
     // If target is 'device' or not specified (default from web client), route to device
     else {
-      const session = await this.remoteControlService.getSession(data.sessionId);
-      if (session) {
-        console.log('[WebRTC] Forwarding ICE to device:', session.deviceId);
-        this.server.to(`device:${session.deviceId}`).emit('webrtc:ice-candidate', data);
-      } else {
-        console.error('[WebRTC] Session not found for ICE:', data.sessionId);
-      }
+      console.log('[WebRTC] Forwarding ICE to device:', session.deviceId);
+      this.server.to(`device:${session.deviceId}`).emit('webrtc:ice-candidate', data);
     }
     return { success: true };
   }
@@ -309,15 +347,24 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string; frame: string; type?: string },
   ) {
-    if (data.type !== 'camera') {
-        // Log only screen frames occasionally to avoid spamming
-        if (Math.random() < 0.05) {
-            console.log(`Forwarding screen frame for session: ${data.sessionId}`);
+    // Basic verification: user must own the device in the session to send frames
+    const session = await this.remoteControlService.getSession(data.sessionId);
+    if (session) {
+        const device = await this.remoteControlService.getDevice(session.deviceId);
+        if (device?.userId !== client['userId']) {
+            // Drop silent to not spam
+            return;
         }
+
+        if (data.type !== 'camera') {
+            if (Math.random() < 0.01) {
+                console.log(`Forwarding screen frame for session: ${data.sessionId}`);
+            }
+        }
+        this.server.to(`session:${data.sessionId}`).emit('screen:frame', {
+          frame: data.frame,
+          type: data.type,
+        });
     }
-    this.server.to(`session:${data.sessionId}`).emit('screen:frame', {
-      frame: data.frame,
-      type: data.type, // Forward the type (camera or screen)
-    });
   }
 }

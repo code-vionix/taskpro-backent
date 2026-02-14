@@ -27,6 +27,7 @@ export class RemoteControlService {
       return this.prisma.registeredDevice.update({
         where: { id: existingDevice.id },
         data: {
+          userId, // Reassign to the currently logged-in user
           status: DeviceStatus.ONLINE,
           socketId,
           lastSeen: new Date(),
