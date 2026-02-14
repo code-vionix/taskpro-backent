@@ -88,13 +88,17 @@ export class RemoteControlService {
   }
 
   // Start remote session
-  async startSession(deviceId: string, webSocketId: string) {
+  async startSession(deviceId: string, webSocketId: string, requestingUserId: string) {
     const device = await this.prisma.registeredDevice.findUnique({
       where: { id: deviceId },
     });
 
     if (!device) {
       throw new Error('Device not found');
+    }
+
+    if (device.userId !== requestingUserId) {
+        throw new Error('Forbidden: You do not own this device');
     }
 
     if (device.status !== DeviceStatus.ONLINE) {

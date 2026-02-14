@@ -1,3 +1,4 @@
+import { JwtService } from '@nestjs/jwt';
 import {
     ConnectedSocket,
     MessageBody,
@@ -8,7 +9,6 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { RemoteControlService } from './remote-control.service';
 
 @WebSocketGateway({
   cors: {
@@ -23,10 +23,30 @@ export class RemoteControlGateway
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly remoteControlService: RemoteControlService) {}
+  constructor(
+    private readonly remoteControlService: RemoteControlService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+    console.log(`Client checking authentication: ${client.id}`);
+    try {
+      // Get token from auth or query
+      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      
+      if (!token) {
+        console.error(`Client ${client.id} disconnected: No token provided`);
+        client.disconnect();
+        return;
+      }
+
+      const decoded = this.jwtService.verify(token);
+      client['userId'] = decoded.sub;
+      console.log(`Client authenticated: ${client.id} (User: ${client['userId']})`);
+    } catch (error) {
+      console.error(`Client ${client.id} disconnected: Invalid token - ${error.message}`);
+      client.disconnect();
+    }
   }
 
   async handleDisconnect(client: Socket) {
@@ -40,10 +60,15 @@ export class RemoteControlGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: any,
   ) {
-    console.log('Received device:register request:', data);
     try {
+      // Use the authenticated userId from the socket
+      const userId = client['userId'];
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const device = await this.remoteControlService.registerDevice(
-        data.userId,
+        userId,
         data.deviceInfo,
         client.id,
       );
@@ -70,9 +95,15 @@ export class RemoteControlGateway
     @MessageBody() data: { deviceId: string },
   ) {
     try {
+      const userId = client['userId'];
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const session = await this.remoteControlService.startSession(
         data.deviceId,
         client.id,
+        userId,
       );
 
       // Join session room
@@ -128,16 +159,25 @@ export class RemoteControlGateway
     },
   ) {
     try {
+      const session = await this.remoteControlService.getSession(
+        data.sessionId,
+      );
+      if (!session) {
+        throw new Error('Session not found');
+      }
+
+      // Check ownership
+      const device = await this.remoteControlService.getDevice(session.deviceId);
+      if (device?.userId !== client['userId']) {
+        throw new Error('Unauthorized: You do not own this device/session');
+      }
+
       const command = await this.remoteControlService.createCommand(
         data.sessionId,
         data.type,
         data.payload,
       );
 
-      // Forward command to device
-      const session = await this.remoteControlService.getSession(
-        data.sessionId,
-      );
       if (session) {
         this.server.to(`device:${session.deviceId}`).emit('command:execute', {
             commandId: command.id,
@@ -210,7 +250,15 @@ export class RemoteControlGateway
   ) {
     console.log('[WebRTC] Received offer from web:', JSON.stringify(data));
     const session = await this.remoteControlService.getSession(data.sessionId);
+    
     if (session) {
+        // Verify ownership
+        const device = await this.remoteControlService.getDevice(session.deviceId);
+        if (device?.userId !== client['userId']) {
+            console.error('[WebRTC] Unauthorized offer attempt by user:', client['userId']);
+            return { success: false, error: 'Unauthorized' };
+        }
+
         console.log('[WebRTC] Forwarding offer to device:', session.deviceId);
         this.server.to(`device:${session.deviceId}`).emit('webrtc:offer', data);
     } else {
