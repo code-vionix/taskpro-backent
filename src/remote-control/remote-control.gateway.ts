@@ -341,6 +341,24 @@ export class RemoteControlGateway
     return { success: true };
   }
 
+  @SubscribeMessage('notification:receive')
+  async handleNotificationReceive(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sessionId: string; notification: string },
+  ) {
+    if (!data.sessionId) return;
+    
+    const session = await this.remoteControlService.getSession(data.sessionId);
+    if (session) {
+      // Verify device ownership
+      const device = await this.remoteControlService.getDevice(session.deviceId);
+      if (device?.userId === client['userId']) {
+        // Forward to the session room (web client)
+        this.server.to(`session:${data.sessionId}`).emit('notification:receive', data);
+      }
+    }
+  }
+
   // Screen frame streaming (fallback if WebRTC fails)
   @SubscribeMessage('screen:frame')
   async handleScreenFrame(
