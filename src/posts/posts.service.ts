@@ -211,7 +211,7 @@ export class PostsService {
       const comment = await this.prisma.comment.create({
           data: { content, userId, postId, parentId },
           include: { 
-              user: { select: { id: true, email: true } },
+              user: { select: { id: true, email: true, name: true, avatarUrl: true } },
               post: { include: { user: true } }
           }
       });
@@ -227,6 +227,32 @@ export class PostsService {
       }
 
       return comment;
+  }
+
+  async updateComment(userId: string, commentId: string, content: string) {
+      const comment = await this.prisma.comment.findUnique({
+          where: { id: commentId }
+      });
+      if (!comment) throw new NotFoundException('Comment not found');
+      if (comment.userId !== userId) throw new ForbiddenException('Not authorized');
+
+      return this.prisma.comment.update({
+          where: { id: commentId },
+          data: { content },
+          include: { user: { select: { id: true, email: true, name: true, avatarUrl: true } } }
+      });
+  }
+
+  async deleteComment(userId: string, commentId: string, role: string) {
+      const comment = await this.prisma.comment.findUnique({
+          where: { id: commentId }
+      });
+      if (!comment) throw new NotFoundException('Comment not found');
+      if (comment.userId !== userId && role !== 'ADMIN') throw new ForbiddenException('Not authorized');
+
+      return this.prisma.comment.delete({
+          where: { id: commentId }
+      });
   }
 
   async update(id: string, userId: string, updatePostDto: any) {

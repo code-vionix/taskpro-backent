@@ -58,6 +58,16 @@ export class PostsController {
       return this.postsService.addComment(req.user.userId, id, content, parentId);
   }
 
+  @Patch('comment/:commentId')
+  updateComment(@Request() req, @Param('commentId') commentId: string, @Body('content') content: string) {
+      return this.postsService.updateComment(req.user.userId, commentId, content);
+  }
+
+  @Delete('comment/:commentId')
+  deleteComment(@Request() req, @Param('commentId') commentId: string) {
+      return this.postsService.deleteComment(req.user.userId, commentId, req.user.role);
+  }
+
   @Patch(':id')
   async update(@Request() req, @Param('id') id: string, @Body() updatePostDto: any) {
     return this.postsService.update(id, req.user.userId, updatePostDto);
