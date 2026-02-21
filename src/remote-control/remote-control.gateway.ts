@@ -52,17 +52,26 @@ export class RemoteControlGateway
       // Join user room for cross-device notification/sync
       client.join(`user_${userId}`);
 
-      // Update online status
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: true, lastSeen: new Date() },
-      });
-      this.server.emit('userStatusChanged', { userId, isOnline: true });
-
       console.log(`[Socket] Authenticated: ${client.id} (User: ${client['userId']})`);
     } catch (error) {
       console.error(`[Socket] Client ${client.id} auth failed: ${error.message}`);
       client.disconnect();
+    }
+  }
+
+  @SubscribeMessage('updatePresence')
+  async handleUpdatePresence(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { isOnline: boolean },
+  ) {
+    const userId = client['userId'];
+    if (userId) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: data.isOnline, lastSeen: new Date() },
+      });
+      this.server.emit('userStatusChanged', { userId, isOnline: data.isOnline });
+      console.log(`User presence updated: ${userId} -> ${data.isOnline}`);
     }
   }
 
