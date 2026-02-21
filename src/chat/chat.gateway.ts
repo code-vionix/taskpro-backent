@@ -104,8 +104,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
-    // Send to receiver room (all tabs)
-    this.server.to(`user_${receiverId}`).emit('newMessage', message);
+    // Send to both namespaces to ensure web and app sync
+    const namespaces = ['/', '/remote-control'];
+    namespaces.forEach(ns => {
+        this.server.of(ns).to(`user_${receiverId}`).emit('newMessage', message);
+        client.broadcast.to(ns).to(`user_${senderId}`).emit('newMessage', message);
+    });
 
     return message;
   }

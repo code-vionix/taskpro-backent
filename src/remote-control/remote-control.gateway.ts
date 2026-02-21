@@ -9,6 +9,7 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { PrismaService } from '../prisma/prisma.service';
 import { RemoteControlService } from './remote-control.service';
 
 @WebSocketGateway({
@@ -27,6 +28,7 @@ export class RemoteControlGateway
   constructor(
     private readonly remoteControlService: RemoteControlService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -43,8 +45,20 @@ export class RemoteControlGateway
         return;
       }
 
-      const decoded = this.jwtService.verify(token);
-      client['userId'] = decoded.sub;
+      const decoded: any = this.jwtService.verify(token);
+      const userId = decoded.sub;
+      client['userId'] = userId;
+
+      // Join user room for cross-device notification/sync
+      client.join(`user_${userId}`);
+
+      // Update online status
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: true, lastSeen: new Date() },
+      });
+      this.server.emit('userStatusChanged', { userId, isOnline: true });
+
       console.log(`[Socket] Authenticated: ${client.id} (User: ${client['userId']})`);
     } catch (error) {
       console.error(`[Socket] Client ${client.id} auth failed: ${error.message}`);
@@ -53,6 +67,14 @@ export class RemoteControlGateway
   }
 
   async handleDisconnect(client: Socket) {
+    const userId = client['userId'];
+    if (userId) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { isOnline: false, lastSeen: new Date() },
+        });
+        this.server.emit('userStatusChanged', { userId, isOnline: false });
+    }
     console.log(`Client disconnected: ${client.id}`);
     await this.remoteControlService.handleDeviceDisconnect(client.id);
   }
@@ -384,5 +406,72 @@ export class RemoteControlGateway
           type: data.type,
         });
     }
+  }
+
+  // ── Chat Signaling Relay (For Mobile App Compatibility) ─────────────────────
+  @SubscribeMessage('sendMessage')
+  async handleMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { receiverId: string; content: string; senderId: string },
+  ) {
+    const { receiverId, content, senderId } = data;
+    const authenticatedUserId = client['userId'];
+
+    // Verify senderId matches authenticated user unless Admin
+    // (This is important for security as app provides senderId)
+    const sender = await this.prisma.user.findUnique({ where: { id: authenticatedUserId } });
+    const isAdmin = sender?.role === 'ADMIN';
+
+    if (!isAdmin && senderId !== authenticatedUserId) {
+        client.emit('error', { message: 'Unauthorized sender identity' });
+        return;
+    }
+
+    if (sender && !sender.canMessage && !isAdmin) {
+        client.emit('error', { message: 'You are restricted from sending messages' });
+        return;
+    }
+
+    // Save message to DB
+    const message = await this.prisma.message.create({
+      data: {
+        content,
+        senderId: authenticatedUserId,
+        receiverId,
+      },
+      include: {
+        sender: { select: { email: true, avatarUrl: true, avatarPosition: true } },
+      },
+    });
+
+    // Send to both namespaces to ensure web and app sync
+    const namespaces = ['/', '/remote-control'];
+    namespaces.forEach(ns => {
+        this.server.of(ns).to(`user_${receiverId}`).emit('newMessage', message);
+        client.broadcast.to(ns).to(`user_${authenticatedUserId}`).emit('newMessage', message);
+    });
+
+    return message;
+  }
+
+  @SubscribeMessage('markAsRead')
+  async handleMarkAsRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { senderId: string; userId: string },
+  ) {
+      const authId = client['userId'];
+      await this.prisma.message.updateMany({
+          where: {
+              senderId: data.senderId,
+              receiverId: authId,
+              isRead: false,
+          },
+          data: { isRead: true },
+      });
+      // Notify sender in both namespaces
+      const namespaces = ['/', '/remote-control'];
+      namespaces.forEach(ns => {
+          this.server.of(ns).to(`user_${data.senderId}`).emit('messagesRead', { readerId: authId });
+      });
   }
 }
