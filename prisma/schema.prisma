@@ -241,12 +241,15 @@ model Reaction {
 
 model Message {
   id        String   @id @default(uuid())
-  content   String
+  content   String?
   senderId  String
   sender    User     @relation("SentMessages", fields: [senderId], references: [id])
   receiverId String
   receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   isRead    Boolean  @default(false)
+  messageType String?  @default("text") // text, image, voice, file
+  fileUrl     String?
+  fileName    String?
   reactions MessageReaction[]
   createdAt DateTime @default(now())
 }

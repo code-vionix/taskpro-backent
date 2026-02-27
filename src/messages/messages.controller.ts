@@ -1,12 +1,38 @@
-
-import { Controller, Delete, Get, Param, Patch, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MessagesService } from './messages.service';
+import { CloudinaryService } from '../common/cloudinary.service';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMessageFile(
+    @Request() req,
+    @Body('receiverId') receiverId: string,
+    @Body('messageType') messageType: string,
+    @Body('content') content: string,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    let fileUrl = '';
+    if (file) {
+        fileUrl = await this.cloudinaryService.uploadImage(file);
+    }
+    return this.messagesService.createMessage(req.user.userId, {
+        receiverId,
+        messageType,
+        content,
+        fileUrl,
+        fileName: file?.originalname
+    });
+  }
 
   @Get('chats')
   getRecentChats(@Request() req) {

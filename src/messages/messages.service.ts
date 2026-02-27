@@ -169,4 +169,19 @@ export class MessagesService {
 
       return conversations;
   }
+  async createMessage(senderId: string, data: { receiverId: string, content?: string, messageType?: string, fileUrl?: string, fileName?: string }) {
+    return this.prisma.message.create({
+      data: {
+        senderId,
+        receiverId: data.receiverId,
+        content: data.content,
+        messageType: data.messageType || 'text',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+      },
+      include: {
+        sender: { select: { id: true, email: true, avatarUrl: true, isOnline: true } }
+      }
+    });
+  }
 }
