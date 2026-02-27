@@ -55,6 +55,17 @@ export class MessagesController {
     return this.messagesService.markAsRead(req.user.userId, senderId);
   }
 
+  @Get('shared-media/:otherUserId')
+  getSharedMedia(
+    @Request() req,
+    @Param('otherUserId') otherUserId: string,
+    @Request() request
+  ) {
+    const typesStr = request.query.types as string;
+    const types = typesStr ? typesStr.split(',') : ['image', 'video', 'file', 'voice'];
+    return this.messagesService.getSharedMedia(req.user.userId, otherUserId, types);
+  }
+
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
     return this.messagesService.remove(id, req.user.userId, req.user.role);

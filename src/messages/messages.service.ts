@@ -184,4 +184,17 @@ export class MessagesService {
       }
     });
   }
+
+  async getSharedMedia(userId: string, otherUserId: string, types: string[]) {
+    return this.prisma.message.findMany({
+      where: {
+        OR: [
+          { senderId: userId, receiverId: otherUserId },
+          { senderId: otherUserId, receiverId: userId },
+        ],
+        messageType: { in: types },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
