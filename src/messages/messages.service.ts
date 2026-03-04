@@ -191,7 +191,10 @@ export class MessagesService {
     });
 
 
-    const messageWithTemp = { ...message, tempId: data.tempId };
+    const messageData = JSON.parse(JSON.stringify(message));
+    const messageWithTemp = { ...messageData, tempId: data.tempId };
+    
+    console.log(`[MessagesService] Emitting message.created for ${message.id}, tempId: ${data.tempId}`);
     this.eventEmitter.emit('message.created', messageWithTemp);
     return messageWithTemp;
   }

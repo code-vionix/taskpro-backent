@@ -425,45 +425,4 @@ export class RemoteControlGateway
     }
   }
 
-  // ── Chat Signaling Relay (For Mobile App Compatibility) ─────────────────────
-  @SubscribeMessage('sendMessage')
-  async handleMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { receiverId: string; content: string; senderId: string },
-  ) {
-    const { receiverId, content, senderId } = data;
-    const authenticatedUserId = client['userId'];
-    console.log(`[RemoteControlGateway] sendMessage received from ${authenticatedUserId} for ${receiverId}`);
-
-    // Verify senderId matches authenticated user unless Admin
-    // (This is important for security as app provides senderId)
-    const sender = await this.prisma.user.findUnique({ where: { id: authenticatedUserId } });
-    const isAdmin = sender?.role === 'ADMIN';
-
-    if (!isAdmin && senderId !== authenticatedUserId) {
-        client.emit('error', { message: 'Unauthorized sender identity' });
-        return;
-    }
-
-    if (sender && !sender.canMessage && !isAdmin) {
-        client.emit('error', { message: 'You are restricted from sending messages' });
-        return;
-    }
-
-    // Save message via Service (which emits event)
-    return this.messagesService.createMessage(authenticatedUserId, {
-        receiverId,
-        content
-    });
-  }
-
-  @SubscribeMessage('markAsRead')
-  @SubscribeMessage('readMessage')
-  async handleMarkAsRead(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { senderId: string; userId: string },
-  ) {
-      const authId = client['userId'];
-      return this.messagesService.markAsRead(authId, data.senderId);
-  }
 }
