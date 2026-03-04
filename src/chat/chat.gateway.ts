@@ -190,6 +190,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Notify both sender and receiver
       this.server.to(`user_${message.senderId}`).emit('messageDeleted', { messageId });
       this.server.to(`user_${message.receiverId}`).emit('messageDeleted', { messageId });
+    }
+  }
 
   @SubscribeMessage('typing')
   handleTyping(
