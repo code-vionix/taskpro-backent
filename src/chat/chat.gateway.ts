@@ -42,9 +42,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const roomSender = `user_${senderId}`;
     
     this.server.to(roomReceiver).emit('newMessage', message);
-    this.server.to(roomSender).emit('newMessage', message);
     
-    console.log(`[ChatGateway] Emitted 'newMessage' to rooms: ${roomReceiver}, ${roomSender}`);
+    // Only emit to sender room if they are different users
+    if (receiverId !== senderId) {
+        this.server.to(roomSender).emit('newMessage', message);
+    }
+    
+    console.log(`[ChatGateway] Emitted 'newMessage' to rooms: ${roomReceiver}${receiverId !== senderId ? ', ' + roomSender : ''}`);
   }
 
   @OnEvent('messages.read')
