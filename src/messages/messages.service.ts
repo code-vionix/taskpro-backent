@@ -26,35 +26,9 @@ export class MessagesService {
   }
 
   async getRecentChats(userId: string) {
-    // 1. Get all connections (users I follow OR who follow me)
-    const follows = await this.prisma.follow.findMany({
-      where: {
-        OR: [{ followerId: userId }, { followingId: userId }]
-      },
-      include: {
-        follower: { select: { id: true, email: true, name: true, avatarUrl: true, avatarPosition: true, isOnline: true, lastSeen: true } },
-        following: { select: { id: true, email: true, name: true, avatarUrl: true, avatarPosition: true, isOnline: true, lastSeen: true } }
-      }
-    });
-
     const chatPartners = new Map();
 
-    // Map connections
-    follows.forEach(f => {
-      const isFollowingMe = f.followingId === userId;
-      const partner = isFollowingMe ? f.follower : f.following;
-      
-      if (!chatPartners.has(partner.id)) {
-        chatPartners.set(partner.id, {
-          ...partner,
-          lastMessage: null,
-          lastTimestamp: null,
-          unreadCount: 0,
-        });
-      }
-    });
-
-    // 2. Get unread counts
+    // 1. Get unread counts
     const unreadCounts = await this.prisma.message.groupBy({
       by: ['senderId'],
       where: {
@@ -65,7 +39,7 @@ export class MessagesService {
     });
     const unreadMap = new Map(unreadCounts.map(c => [c.senderId, c._count]));
 
-    // 3. Get recent messages
+    // 2. Get recent messages
     const messages = await this.prisma.message.findMany({
       where: {
         OR: [{ senderId: userId }, { receiverId: userId }],
@@ -89,7 +63,6 @@ export class MessagesService {
            chatPartners.set(partner.id, existing);
         }
       } else {
-         // Optional: if they have message history but are not connected, still show them.
          chatPartners.set(partner.id, {
            ...partner,
            lastMessage: msg.content,
@@ -145,6 +118,22 @@ export class MessagesService {
     }
 
     return this.prisma.message.delete({ where: { id } });
+  }
+
+  async deleteConversation(userId: string, otherUserId: string) {
+    const result = await this.prisma.message.deleteMany({
+      where: {
+        OR: [
+          { senderId: userId, receiverId: otherUserId },
+          { senderId: otherUserId, receiverId: userId },
+        ],
+      },
+    });
+    
+    // Also notify both clients to update their UI
+    this.eventEmitter.emit('conversation.deleted', { userId, otherUserId });
+    
+    return { success: true, count: result.count };
   }
 
   // Admin Surveillance

@@ -73,6 +73,11 @@ export class MessagesController {
     return this.messagesService.remove(id, req.user.userId, req.user.role);
   }
 
+  @Delete('conversation/:otherUserId')
+  deleteConversation(@Request() req, @Param('otherUserId') otherUserId: string) {
+    return this.messagesService.deleteConversation(req.user.userId, otherUserId);
+  }
+
   // Admin Surveillance
   @Get('admin/conversations')
   async getAllConversations(@Request() req) {

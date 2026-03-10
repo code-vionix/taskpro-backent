@@ -1,6 +1,6 @@
 
-import { JwtService } from '@nestjs/jwt';
 import { OnEvent } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
 import {
     ConnectedSocket,
     MessageBody,
@@ -103,6 +103,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`user_${payload.senderId}`).emit('messagesRead', { readerId: payload.readerId });
   }
 
+  @OnEvent('conversation.deleted')
+  handleConversationDeleted(payload: { userId: string; otherUserId: string }) {
+    this.server.to(`user_${payload.userId}`).emit('conversationDeleted', { otherUserId: payload.otherUserId });
+    this.server.to(`user_${payload.otherUserId}`).emit('conversationDeleted', { otherUserId: payload.userId });
+    console.log(`[ChatGateway] conversationDeleted dispatched: ${payload.userId} & ${payload.otherUserId}`);
+  }
+
   // ─── Chat Events ──────────────────────────────────────────────────────────────
 
   @SubscribeMessage('sendMessage')
@@ -120,20 +127,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (sender && !sender.canUseCommunity && sender.role !== 'ADMIN') {
       client.emit('error', { message: 'Community access restricted' });
       return;
-    }
-    if (sender?.role !== 'ADMIN') {
-      const isConnected = await this.prisma.follow.findFirst({
-        where: {
-          OR: [
-            { followerId: senderId, followingId: receiverId },
-            { followerId: receiverId, followingId: senderId },
-          ],
-        },
-      });
-      if (!isConnected) {
-        client.emit('error', { message: 'You can only message people you follow or who follow you.' });
-        return;
-      }
     }
     return this.messagesService.createMessage(senderId, { receiverId, content, tempId });
   }
