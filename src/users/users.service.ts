@@ -109,6 +109,7 @@ export class UsersService {
         email: true,
         name: true,
         role: true,
+        password: true,
         avatarUrl: true,
         isOnline: true,
         canPost: true,

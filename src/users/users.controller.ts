@@ -16,6 +16,10 @@ export class UsersController {
 
   @Get()
   findAll(@Request() req) {
+    if (req.user?.role !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized: Only admins can list users');
+    }
+
     return this.usersService.findAll();
   }
 
