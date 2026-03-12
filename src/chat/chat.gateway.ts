@@ -65,12 +65,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.connectedUsers.set(userId, client.id);
     client.join(`user_${userId}`);
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { isOnline: true, lastSeen: new Date() },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: true, lastSeen: new Date() },
+      });
+      console.log(`[ChatGateway] Connected & Updated status: ${userId} (${client.id})`);
+    } catch (error) {
+      console.warn(`[ChatGateway] Could not update status for user ${userId}: Record not found. Client might be using an old token.`);
+      client.disconnect();
+      return;
+    }
     this.server.emit('userStatusChanged', { userId, isOnline: true });
-    console.log(`[ChatGateway] Connected: ${userId} (${client.id})`);
   }
 
   async handleDisconnect(client: Socket) {
