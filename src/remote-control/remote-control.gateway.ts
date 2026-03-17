@@ -69,7 +69,7 @@ export class RemoteControlGateway
   ) {
     const userId = client['userId'];
     if (userId) {
-      await this.prisma.user.update({
+      await this.prisma.user.updateMany({
         where: { id: userId },
         data: { isOnline: data.isOnline, lastSeen: new Date() },
       });
@@ -84,7 +84,7 @@ export class RemoteControlGateway
   async handleDisconnect(client: Socket) {
     const userId = client['userId'];
     if (userId) {
-        await this.prisma.user.update({
+        await this.prisma.user.updateMany({
             where: { id: userId },
             data: { isOnline: false, lastSeen: new Date() },
         });

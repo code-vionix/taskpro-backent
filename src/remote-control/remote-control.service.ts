@@ -46,14 +46,13 @@ export class RemoteControlService {
     });
   }
 
-  // Handle device disconnect
   async handleDeviceDisconnect(socketId: string) {
     const device = await this.prisma.registeredDevice.findFirst({
       where: { socketId },
     });
 
     if (device) {
-      await this.prisma.registeredDevice.update({
+      await this.prisma.registeredDevice.updateMany({
         where: { id: device.id },
         data: {
           status: DeviceStatus.OFFLINE,
