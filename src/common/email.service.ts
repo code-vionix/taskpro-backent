@@ -11,9 +11,6 @@ export class EmailService {
     const user = this.configService.get('SMTP_USER');
     const pass = this.configService.get('SMTP_PASS');
     
-    
-    
-    
 
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
@@ -52,9 +49,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      
+
     } catch (error) {
-      console.error('Error sending email:', error);
+
       throw new Error('Failed to send email');
     }
   }

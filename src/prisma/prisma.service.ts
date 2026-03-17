@@ -22,7 +22,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     // @ts-ignore
     this.$on('query', (e: any) => {
-      
     });
 
     // @ts-ignore
@@ -32,12 +31,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     // @ts-ignore
     this.$on('warn', (e: any) => {
-      console.warn(`\x1b[33m[Prisma Warn]\x1b[0m ${e.message}`);
     });
 
     // @ts-ignore
     this.$on('info', (e: any) => {
-      
     });
 
   }
@@ -46,4 +43,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
   }
 }
-

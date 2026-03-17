@@ -25,7 +25,6 @@ export class NotificationsService {
       },
     });
 
-    
 
     // Push to user in real-time
     this.gateway.sendNotification(data.userId, notification);

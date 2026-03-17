@@ -33,10 +33,9 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         client.join(`user_${userId}`);
         client.data.userId = userId;
         
-        
       }
     } catch (error) {
-      console.error('Socket authentication failed:', error.message);
+
       client.disconnect();
     }
   }
@@ -47,7 +46,6 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       this.connectedUsers.set(userId, client.id);
       client.join(`user_${userId}`);
       client.data.userId = userId;
-      
     }
   }
 
@@ -55,12 +53,10 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     const userId = client.data.userId;
     if (userId) {
       this.connectedUsers.delete(userId);
-      
     }
   }
 
   sendNotification(userId: string, notification: any) {
-    
     this.server.to(`user_${userId}`).emit('newNotification', notification);
   }
 }

@@ -179,7 +179,6 @@ export class MessagesService {
     const messageData = JSON.parse(JSON.stringify(message));
     const messageWithTemp = { ...messageData, tempId: data.tempId };
     
-    
     this.eventEmitter.emit('message.created', messageWithTemp);
     return messageWithTemp;
   }
